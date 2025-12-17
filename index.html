@@ -146,7 +146,8 @@
                     <div class="bg-light-green p-4 rounded-xl text-left">
                         <p class="text-xs text-gray-600 font-bold mb-2">🧚‍♂️ 洋洋的療癒處方</p>
                         <p class="text-gray-700 font-medium mb-3" id="yangyang-tip"></p>
-                        <a id="yangyang-link" href="#" class="inline-flex items-center text-sm font-bold text-accent hover:underline">
+                        <!-- #yangyang-link 已經透過 JS 修正為指向 Line@ 帳號 -->
+                        <a id="yangyang-link" href="#" target="_blank" class="inline-flex items-center text-sm font-bold text-accent hover:underline">
                             點擊開啟洋洋 App 領取處方 →
                         </a>
                     </div>
@@ -168,8 +169,10 @@
             <h3 class="text-xl font-bold text-accent mb-3">洋洋 - 妳的心理小伴侶</h3>
             <p class="text-gray-600 mb-6">洋洋 App 專為媽咪設計，提供 24/7 傾聽服務，絕不評判。當壓力大到無人了解時，請隨時找她。</p>
             <div class="space-y-3">
-                <a href="https://example.com/yangyang-ios" target="_blank" class="w-full block py-3 bg-gray-800 text-white rounded-xl font-bold hover:bg-gray-700">App Store 下載</a>
-                <a href="https://example.com/yangyang-android" target="_blank" class="w-full block py-3 btn-primary rounded-xl font-bold">Google Play 下載</a>
+                <!-- 修正 iOS 連結 -->
+                <a href="https://apps.apple.com/tw/app/herehear-3d%E8%99%9B%E6%93%AC%E7%99%82%E7%99%92%E5%B8%AB%E6%B4%8B%E6%B4%8B/id6472772767" target="_blank" class="w-full block py-3 bg-gray-800 text-white rounded-xl font-bold hover:bg-gray-700">App Store 下載 (iOS)</a>
+                <!-- 修正 Android 連結 -->
+                <a href="https://play.google.com/store/apps/details?id=com.BambooTechnology.HereHearaAndroid&hl=zh&pli=1" target="_blank" class="w-full block py-3 btn-primary rounded-xl font-bold">Google Play 下載 (Android)</a>
                 <button onclick="closeYangYangModal()" class="w-full text-sm text-gray-500 mt-2 hover:underline">暫時不用，謝謝</button>
             </div>
         </div>
@@ -404,7 +407,9 @@
             
             // 洋洋的提醒文案
             document.getElementById('yangyang-tip').innerText = `洋洋已經在手機裡為妳準備了『${userData.yangyang}』的療癒處方。`;
-            document.getElementById('yangyang-link').href = `yangyang://healing?mbti=${userMbti}&stage=${stageCode}`; // Deep Link
+            // 修正: 將連結指向 Line@ 帳號，作為領取處方的聯繫方式
+            document.getElementById('yangyang-link').href = `https://line.me/R/ti/p/@yangyangline`; // 請替換為實際的 Line@ 帳號連結
+            document.getElementById('yangyang-link').target = "_blank"; // 確保在新分頁開啟
 
             // 將結果儲存到本地，模擬持久化
             localStorage.setItem('momsight_mbti', userMbti);
