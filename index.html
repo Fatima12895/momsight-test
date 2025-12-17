@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Momsight | 妳的育兒時光導航</title>
+    <!-- 載入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        /* 定義我們設計的莫蘭迪暖色系 */
+        :root {
+            --color-warm-pink: #F8E1E1; /* 舒緩粉 */
+            --color-light-green: #E9EDC9; /* 晨曦綠 */
+            --color-calm-blue: #D8E2DC; /* 沉靜藍 */
+            --color-gold: #D4A373; /* 暖沙金 */
+        }
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #fff9f6; /* 輕柔的米白色底 */
+        }
+        .text-accent { color: var(--color-gold); }
+        .bg-accent { background-color: var(--color-gold); }
+        .btn-primary {
+            background-color: var(--color-light-green);
+            color: #4a573b;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px -1px rgb(212, 163, 115, 0.3);
+        }
+        .btn-primary:hover {
+            background-color: #ccd5ae;
+            transform: translateY(-2px);
+        }
+        .card-shadow { box-shadow: 0 10px 15px -3px rgba(248, 225, 225, 0.5), 0 4px 6px -2px rgba(248, 225, 225, 0.05); }
+        .quiz-option {
+            background-color: #fff;
+            border: 2px solid var(--color-warm-pink);
+            transition: all 0.2s;
+        }
+        .quiz-option:hover {
+            background-color: var(--color-warm-pink);
+            border-color: var(--color-gold);
+            transform: scale(1.01);
+        }
+        /* 懸浮的洋洋 App 按鈕 */
+        #yang-yang-fab {
+            z-index: 50;
+            background-color: #F8E1E1;
+            box-shadow: 0 5px 15px rgba(212, 163, 115, 0.6);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .loading-ring {
+            border: 4px solid var(--color-gold);
+            border-top-color: transparent;
+            border-radius: 50%;
+            width: 1.5rem;
+            height: 1.5rem;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center p-0">
+
+    <!-- 懸浮的 AI 洋洋按鈕 (Fab) -->
+    <a id="yang-yang-fab" href="#" class="fixed bottom-6 right-6 p-4 rounded-full flex items-center justify-center text-accent text-sm font-bold shadow-lg" onclick="showYangYangModal(event)">
+        <span class="text-2xl mr-2">🧚‍♂️</span>
+        洋洋
+    </a>
+
+    <!-- 主內容容器 -->
+    <main id="app-container" class="w-full max-w-lg min-h-screen bg-white rounded-t-3xl shadow-2xl p-6 md:p-8">
+
+        <!-- Header: 標題與簡介 -->
+        <header class="text-center my-6">
+            <h1 class="text-4xl font-bold text-accent">Momsight</h1>
+            <p class="text-gray-500 mt-2">妳的育兒時光導航，結合 MBTI 與階段分析</p>
+        </header>
+
+        <!-- 區塊切換容器 -->
+        <div id="content-area">
+
+            <!-- 1. 階段設定 (Stage Input) -->
+            <section id="stage-input" class="animate-fade-in">
+                <h2 class="text-xl font-semibold text-gray-700 mb-6 text-center">開始探索：輸入重要日期</h2>
+                
+                <div class="bg-warm-pink/50 p-6 rounded-2xl mb-6 card-shadow">
+                    <p class="text-sm text-gray-600 mb-3">請告訴我們，妳的預產期或寶寶的生日是？</p>
+                    <input type="date" id="target-date" value="" class="w-full p-3 border-2 border-orange-200 rounded-lg focus:border-accent focus:outline-none">
+                    <p id="date-error" class="text-xs text-red-600 mt-2 hidden">請選擇一個日期才能開始測驗喔！</p>
+                </div>
+
+                <div class="space-y-4">
+                    <button onclick="checkStageAndProceed()" class="w-full btn-primary py-4 rounded-2xl font-bold text-lg">
+                        確認日期並啟動測驗
+                    </button>
+                </div>
+            </section>
+
+            <!-- 2. 測驗區 (Quiz) -->
+            <section id="quiz-section" class="hidden animate-fade-in">
+                <div class="mb-6 text-center">
+                    <div class="h-1 w-full bg-gray-100 rounded-full">
+                        <div id="quiz-progress" class="h-1 bg-accent rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                    <p class="text-sm text-gray-500 mt-2">問題 <span id="current-question-index">1</span> / <span id="total-questions">12</span></p>
+                </div>
+                
+                <div id="quiz-card" class="bg-white p-6 rounded-3xl card-shadow">
+                    <h3 id="question-text" class="text-lg font-medium text-gray-800 mb-6 leading-relaxed"></h3>
+                    <div id="quiz-options" class="space-y-4">
+                        <!-- 選項會透過 JS 填充 -->
+                    </div>
+                </div>
+                <!-- 修正: next-button 已經在 JS 中處理隱藏/顯示，這裡保持原本狀態 -->
+                <button id="next-button" onclick="nextQuestion()" class="w-full btn-primary py-3 rounded-2xl font-bold mt-6 hidden">下一題</button>
+            </section>
+
+            <!-- 3. 結果顯示區 (Result Dashboard) -->
+            <section id="result-section" class="hidden animate-fade-in text-center">
+                <div class="inline-block p-4 bg-warm-pink rounded-full mb-4">
+                    <span class="text-4xl">👑</span>
+                </div>
+                <h3 class="text-gray-500 text-sm tracking-widest uppercase mb-2">妳的媽咪原型</h3>
+                <h2 id="mom-type-title" class="text-3xl font-bold text-accent mb-4"></h2>
+                
+                <!-- 階段狀態 -->
+                <p id="stage-status" class="text-sm text-gray-600 mb-6 py-1 px-3 bg-calm-blue/30 inline-block rounded-full"></p>
+
+                <!-- 核心提醒卡片 -->
+                <div class="bg-warm-pink p-6 rounded-2xl text-left mb-6 card-shadow">
+                    <h4 class="text-lg font-semibold text-accent mb-3">給 [媽咪類型] 妳的話：</h4>
+                    <p class="text-gray-700 leading-relaxed" id="mom-reminder"></p>
+                </div>
+
+                <!-- 洋洋與隊友行動區 -->
+                <div class="space-y-6">
+                    <!-- 洋洋療癒處方 -->
+                    <div class="bg-light-green p-4 rounded-xl text-left">
+                        <p class="text-xs text-gray-600 font-bold mb-2">🧚‍♂️ 洋洋的療癒處方</p>
+                        <p class="text-gray-700 font-medium mb-3" id="yangyang-tip"></p>
+                        <a id="yangyang-link" href="#" class="inline-flex items-center text-sm font-bold text-accent hover:underline">
+                            點擊開啟洋洋 App 領取處方 →
+                        </a>
+                    </div>
+                    
+                    <!-- 隊友求救卡 -->
+                    <button onclick="showSosCard()" class="w-full btn-primary py-4 rounded-2xl font-bold shadow-lg">
+                        傳送「隊友應援指令」給先生
+                    </button>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Modal: 洋洋 App 下載提醒 -->
+    <div id="yangyang-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm text-center">
+            <div class="text-4xl mb-4">☀️</div>
+            <h3 class="text-xl font-bold text-accent mb-3">洋洋 - 妳的心理小伴侶</h3>
+            <p class="text-gray-600 mb-6">洋洋 App 專為媽咪設計，提供 24/7 傾聽服務，絕不評判。當壓力大到無人了解時，請隨時找她。</p>
+            <div class="space-y-3">
+                <a href="https://example.com/yangyang-ios" target="_blank" class="w-full block py-3 bg-gray-800 text-white rounded-xl font-bold hover:bg-gray-700">App Store 下載</a>
+                <a href="https://example.com/yangyang-android" target="_blank" class="w-full block py-3 btn-primary rounded-xl font-bold">Google Play 下載</a>
+                <button onclick="closeYangYangModal()" class="w-full text-sm text-gray-500 mt-2 hover:underline">暫時不用，謝謝</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: 隊友求救卡 -->
+    <div id="sos-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-sm text-center">
+            <h3 class="text-xl font-bold text-accent mb-3">🚨 隊友應援指令</h3>
+            <div id="sos-card-content" class="bg-warm-pink p-5 rounded-xl mb-4 text-left">
+                <!-- 內容會透過 JS 填充 -->
+            </div>
+            <p class="text-xs text-gray-500 mb-4">（長按卡片內容複製或分享到 Line）</p>
+            <button id="copy-sos-btn" class="w-full py-3 bg-accent text-white rounded-xl font-bold hover:bg-orange-600 mb-2">一鍵複製指令</button>
+            <button onclick="closeSosModal()" class="w-full text-sm text-gray-500 mt-2 hover:underline">關閉</button>
+        </div>
+    </div>
+
+    <script>
+        // 全局狀態管理
+        let userMbti = '';
+        let currentStage = {};
+        let currentQuestion = 0;
+        let scores = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 };
+
+        // --- 數據結構：16 型人格 + 階段文案 (簡化版) ---
+        // stageCode: pre_1 (懷孕初期), pre_2 (中期), pre_3 (後期), post_1 (產後3M)
+        
+        // 修正錯誤：將基礎數據提取出來，解決 ReferenceError
+        const INFJ_BASE = {
+            pre_1: { title: "靈魂築夢家", reminder: "情緒波動是正常的。別焦慮，妳的直覺正在引導妳。", yangyang: "INFJ_BREATHING", sos: "抱抱她 30 秒，安靜地聽她說說今天的心情。" },
+            post_1: { title: "靈魂導航員媽咪", reminder: "妳的敏感是天賦，但請不要過度吸收負能量，記得先照顧好自己。", yangyang: "INFJ_MEDITATION", sos: "讓她安靜獨處 1 小時，不要打擾她，並告訴她已經做得很好。" }
+        };
+        const ISTJ_BASE = {
+            pre_1: { title: "精密數據家", reminder: "停止搜尋！過多的禁忌資訊只會增加焦慮，信任妳的身體。", yangyang: "ISTJ_LOGIC_RESET", sos: "檢查待辦清單，並主動完成最難的一項家務。" },
+            post_1: { title: "精密數據媽咪", reminder: "寶寶的作息表不是妳的 KPI。放下一件家務，允許混亂的存在。", yangyang: "ISTJ_DECOMPRESS", sos: "接管所有家務 2 小時，讓她徹底斷電休息。" }
+        };
+        const ENTP_BASE = {
+            pre_1: { title: "創意策劃家", reminder: "雖然現在步調慢了，但這是妳設計完美育兒法前的思考期，盡情發揮創意。", yangyang: "ENTP_BRAINSTORM", sos: "陪她看一集跟育兒完全無關的硬核科技或歷史劇。" },
+            post_1: { title: "打破常規媽咪", reminder: "妳的靈活是應對嫩嬰最強的武器。誰說一定要按照傳統方式做？妳可以發明自己的育兒法！", yangyang: "ENTP_GAMIFY_CLEANING", sos: "主動帶寶寶出門 2 小時，讓她獨自享受美食。" }
+        };
+        const ESFP_BASE = {
+            pre_1: { title: "活在當下家", reminder: "孕吐很難受，但請相信很快就會過去。現在能休息就休息，不要有負罪感。", yangyang: "ESFP_LIGHT_STRETCHING", sos: "為她準備一個漂亮的下午茶點心，並播放熱鬧的音樂。" },
+            post_1: { title: "派對核心媽咪", reminder: "最棒的派對就在妳懷裡，妳是寶寶唯一的超級巨星。享受這一刻與他的眼神共舞。", yangyang: "ESFP_ENERGIZE", sos: "為她規劃一個 15 分鐘的短暫、刺激的戶外活動。" }
+        };
+
+        const momDatabase = {
+            // E/I, S/N, T/F, J/P
+            INFJ: INFJ_BASE,
+            ISTJ: ISTJ_BASE,
+            ENTP: ENTP_BASE,
+            ESFP: ESFP_BASE,
+            // 由於篇幅限制，其他 12 種人格使用已定義的數據作為展示
+            INFP:  { ...INFJ_BASE }, ENFJ:  { ...INFJ_BASE }, ENFP:  { ...INFJ_BASE },
+            INTJ:  { ...ISTJ_BASE }, INTP:  { ...ISTJ_BASE }, ENTJ:  { ...ISTJ_BASE },
+            ISFJ:  { ...ESFP_BASE }, ESTJ:  { ...ESFP_BASE }, ESTP:  { ...ESFP_BASE },
+            ISFP:  { ...ENTP_BASE }, ISTP:  { ...ENTP_BASE },
+        };
+        
+        // --- 心理測驗題目 (12題) ---
+        // 格式: Q, 屬性1 (選項A), 屬性2 (選項B)
+        const quizQuestions = [
+            // E vs I (能量來源)
+            { Q: "1. 好不容易把寶寶哄睡了，這珍貴的 15 分鐘妳會？", A: "享受絕對的安靜，不想跟任何人說話。", B: "傳訊息給朋友發牢騷，或去媽媽社群看育兒趣事。", TypeA: 'I', TypeB: 'E' },
+            { Q: "2. 帶寶寶出門散步時，如果遇到鄰居熱情搭訕聊天：", A: "禮貌微笑但內心吶喊：「我只想趕快走開...」", B: "雖然有點累，但跟大人聊天的感覺真好，電力補回 20%！", TypeA: 'I', TypeB: 'E' },
+            { Q: "3. 關於孕期或產後的活動規劃，妳傾向？", A: "規劃一個只有家人或隊友參與的私密活動。", B: "舉辦一個大型派對，與大家分享這份喜悅。", TypeA: 'I', TypeB: 'E' },
+
+            // S vs N (訊息接收)
+            { Q: "4. 在買嬰兒用品（如推車）時，妳最在意的是？", A: "實測數據：避震幾公分、收納幾秒、耐重幾公斤，數據會說話。", B: "整體氛圍：它的設計感、品牌理念，以及推著它散步時的感覺。", TypeA: 'S', TypeB: 'N' },
+            { Q: "5. 關於「育兒專家的建議」，妳通常怎麼看？", A: "照著步驟一步步來，這些實務經驗是最保險的。", B: "聽聽看，但我覺得還是要看寶寶的靈魂跟我契不契合。", TypeA: 'S', TypeB: 'N' },
+            { Q: "6. 當寶寶第一次踢妳（胎動）時，妳腦中跳出的第一個念頭？", A: "喔喔！他在這個位置踢，他現在的力量很有勁喔。", B: "哇！他在跟我打招呼耶，他以後一定是一個很活潑的小探險家。", TypeA: 'S', TypeB: 'N' },
+
+            // T vs F (判斷準則)
+            { Q: "7. 寶寶因為不明原因大哭不止，妳當下的內心反應？", A: "到底是哪裡出問題？剛餵過奶、換過尿布，難道是太熱了？（Debug 模式）", B: "天啊，他一定很難受，我的心都碎了，好想趕快抱緊他。", TypeA: 'T', TypeB: 'F' },
+            { Q: "8. 老公試圖幫忙照顧，但動作笨手笨腳時，妳會？", A: "指出他的錯誤：「奶瓶不應該這樣拿，這樣會進空氣。」", B: "雖然很想糾正，但看他這麼努力，還是先誇獎他：「謝謝你這麼用心幫忙。」", TypeA: 'T', TypeB: 'F' },
+            { Q: "9. 關於「教養小孩」，妳認為最重要的一點是？", A: "培養他獨立解決問題的能力，成為一個有邏輯的人。", B: "讓他感受到滿滿的愛與安全感，成為一個溫暖的人。", TypeA: 'T', TypeB: 'F' },
+
+            // J vs P (生活模式)
+            { Q: "10. 妳的「待產包」準備狀況通常是？", A: "懷孕七個月就列好表格，八個月就已經整齊收在門口。", B: "快生了才開始緊張：「喔對，我要拿那個...還有那個...」", TypeA: 'J', TypeB: 'P' },
+            { Q: "11. 寶寶今天突然不睡午覺，打亂了妳原訂的計畫：", A: "感到非常焦慮與煩躁，覺得整天的節奏都毀了。", B: "沒關係，那就現在帶他去公園走走吧，計畫隨時能改。", TypeA: 'J', TypeB: 'P' },
+            { Q: "12. 關於家裡的「育兒環境」，妳的要求是？", A: "東西一定要歸位，奶粉罐、尿布袋都有專屬的座標。", B: "隨興就好，生活感重一點也沒關係，重點是大家都開心。", TypeA: 'J', TypeB: 'P' },
+        ];
+
+        // --- 階段定義 (7 階段) ---
+        const TIME_STAGES = {
+            pre_1: { min: -280, max: -190, label: "懷孕初期 (1-3個月)", code: "pre_1" },
+            pre_2: { min: -189, max: -90,  label: "懷孕中期 (4-6個月)", code: "pre_2" },
+            pre_3: { min: -89,  max: -1,   label: "懷孕後期 (7-9個月)", code: "pre_3" },
+            post_1: { min: 0,    max: 90,   label: "產後三個月 (磨合期)", code: "post_1" },
+            post_2: { min: 91,   max: 180,  label: "產後六個月 (副食品)", code: "post_2" },
+            post_3: { min: 181,  max: 270,  label: "產後九個月 (爬行期)", code: "post_3" },
+            post_4: { min: 271,  max: 365,  label: "產後一年 (重生期)",   code: "post_4" }
+        };
+        
+        // --- 核心邏輯區塊 ---
+
+        function toggleSection(sectionId) {
+            document.querySelectorAll('#content-area section').forEach(sec => {
+                sec.classList.add('hidden');
+            });
+            document.getElementById(sectionId).classList.remove('hidden');
+        }
+
+        // 1. 階段檢查與處理
+        function calculateMomsStage(targetDateStr) {
+            const now = new Date();
+            const target = new Date(targetDateStr);
+            if (isNaN(target)) return null;
+
+            // Date 物件在不同環境下可能會解析成 UTC 或本地時間，導致差一天。
+            // 為確保計算準確，將日期設為當天午夜 UTC
+            const targetUtc = new Date(target.getUTCFullYear(), target.getUTCMonth(), target.getUTCDate());
+            const nowUtc = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+            
+            const diffInTime = nowUtc.getTime() - targetUtc.getTime();
+            const diffInDays = Math.floor(diffInTime / (1000 * 3600 * 24));
+
+
+            for (const key in TIME_STAGES) {
+                const stage = TIME_STAGES[key];
+                if (diffInDays >= stage.min && diffInDays <= stage.max) {
+                    return {
+                        ...stage,
+                        currentDay: diffInDays,
+                        message: `今天是妳與寶寶相遇的第 ${Math.abs(diffInDays)} 天`
+                    };
+                }
+            }
+            return { label: "超能媽咪期", code: "post_future", message: "妳已經是一個經驗豐富的戰士了！" };
+        }
+
+        function checkStageAndProceed() {
+            const dateInput = document.getElementById('target-date').value;
+            const errorDiv = document.getElementById('date-error');
+
+            console.log('--- Check Stage and Proceed ---'); // 流程記錄
+            console.log('Date Input Value:', dateInput); // 流程記錄
+
+            if (!dateInput) {
+                errorDiv.classList.remove('hidden');
+                errorDiv.innerText = '請選擇一個日期才能開始測驗喔！';
+                console.error('ERROR: Date input is empty. Stopping.'); // 流程記錄
+                return;
+            }
+            
+            errorDiv.classList.add('hidden');
+
+            currentStage = calculateMomsStage(dateInput);
+            
+            if (currentStage && currentStage.code) {
+                console.log('Calculated Stage:', currentStage); // 流程記錄
+                console.log('Date valid. Starting quiz...'); // 流程記錄
+                startQuiz();
+            } else {
+                // 如果日期選擇了，但 calculateMomsStage 返回 null (例如 target=NaN)
+                errorDiv.classList.remove('hidden');
+                errorDiv.innerText = '日期無效，請選擇一個合法的日期。';
+                console.error('ERROR: Could not calculate stage. Date might be invalid or calculation failed.');
+            }
+        }
+
+        // 2. 測驗邏輯
+        function startQuiz() {
+            console.log('Starting Quiz...'); // 流程記錄
+            toggleSection('quiz-section');
+            console.log('Section toggled to quiz-section.'); // 流程記錄
+            currentQuestion = 0;
+            scores = { E: 0, I: 0, S: 0, N: 0, T: 0, F: 0, J: 0, P: 0 };
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            if (currentQuestion >= quizQuestions.length) {
+                calculateMBTI();
+                return;
+            }
+
+            const qData = quizQuestions[currentQuestion];
+            document.getElementById('question-text').innerText = qData.Q;
+            document.getElementById('current-question-index').innerText = currentQuestion + 1;
+            document.getElementById('total-questions').innerText = quizQuestions.length;
+            // 進度條顯示已完成的問題比例
+            document.getElementById('quiz-progress').style.width = `${((currentQuestion) / quizQuestions.length) * 100}%`; 
+
+            const optionsDiv = document.getElementById('quiz-options');
+            optionsDiv.innerHTML = '';
+
+            // 隨機排列選項，防止作答偏見
+            const options = [
+                { text: qData.A, type: qData.TypeA },
+                { text: qData.B, type: qData.TypeB }
+            ].sort(() => Math.random() - 0.5);
+
+            options.forEach(option => {
+                const button = document.createElement('button');
+                button.className = 'quiz-option w-full p-4 rounded-xl text-gray-700 text-left font-medium';
+                button.innerText = option.text;
+                button.onclick = () => selectAnswer(option.type);
+                optionsDiv.appendChild(button);
+            });
+        }
+
+        function selectAnswer(type) {
+            scores[type]++;
+            currentQuestion++;
+            renderQuestion();
+        }
+
+        function calculateMBTI() {
+            const M1 = scores.E > scores.I ? 'E' : 'I';
+            const M2 = scores.S > scores.N ? 'S' : 'N';
+            const M3 = scores.T > scores.F ? 'T' : 'F';
+            const M4 = scores.J > scores.P ? 'J' : 'P';
+
+            userMbti = M1 + M2 + M3 + M4;
+            renderResult();
+        }
+
+        // 3. 結果渲染
+        function renderResult() {
+            toggleSection('result-section');
+            
+            // 確保有找到正確的數據，否則使用 INFJ 作為 fallback
+            const baseData = momDatabase[userMbti] || momDatabase.INFJ;
+            const stageCode = currentStage.code in baseData ? currentStage.code : 'post_1'; 
+            const userData = baseData[stageCode] || momDatabase.INFJ.post_1; // fallback to INFJ post_1 if missing
+            const stageLabel = currentStage.label || TIME_STAGES.post_1.label;
+            
+            document.getElementById('mom-type-title').innerText = userData.title + ` (${userMbti})`;
+            document.getElementById('stage-status').innerText = stageLabel;
+            document.getElementById('mom-reminder').innerText = userData.reminder;
+            
+            // 洋洋的提醒文案
+            document.getElementById('yangyang-tip').innerText = `洋洋已經在手機裡為妳準備了『${userData.yangyang}』的療癒處方。`;
+            document.getElementById('yangyang-link').href = `yangyang://healing?mbti=${userMbti}&stage=${stageCode}`; // Deep Link
+
+            // 將結果儲存到本地，模擬持久化
+            localStorage.setItem('momsight_mbti', userMbti);
+            localStorage.setItem('momsight_birthday', document.getElementById('target-date').value);
+        }
+
+        // --- 彈窗邏輯 ---
+        function showYangYangModal(e) {
+            e.preventDefault();
+            document.getElementById('yangyang-modal').classList.remove('hidden');
+        }
+
+        function closeYangYangModal() {
+            document.getElementById('yangyang-modal').classList.add('hidden');
+        }
+        
+        function showSosCard() {
+            const baseData = momDatabase[userMbti] || momDatabase.INFJ;
+            const stageCode = currentStage.code in baseData ? currentStage.code : 'post_1';
+            const userData = baseData[stageCode] || momDatabase.INFJ.post_1;
+            
+            const sosCardHtml = `
+                <p class="font-bold text-gray-800 mb-2">給隊友的求救指令：</p>
+                <p class="text-sm text-gray-700">「我是 ${userData.title} (${userMbti}) 媽咪，我現在的電量已經耗盡了，我最需要的支援是：</p>
+                <p class="text-lg font-bold text-accent mt-3">${userData.sos}</p>
+                <p class="text-sm text-gray-700 mt-3">—— 愛妳的老婆」</p>
+            `;
+            document.getElementById('sos-card-content').innerHTML = sosCardHtml;
+            document.getElementById('sos-modal').classList.remove('hidden');
+            
+            document.getElementById('copy-sos-btn').onclick = () => copySosText(userData.sos);
+        }
+
+        function closeSosModal() {
+            document.getElementById('sos-modal').classList.add('hidden');
+        }
+
+        // 複製文本到剪貼板
+        function copySosText(sosText) {
+            // 使用 document.execCommand('copy') 作為 fallback，因為 navigator.clipboard 在 iframe 中可能受限
+            const textToCopy = `我是 ${userMbti} 媽咪，我現在最需要的支援是：${sosText}`;
+            const tempInput = document.createElement('textarea');
+            tempInput.value = textToCopy;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                const message = successful ? '複製成功！請傳給隊友！' : '複製失敗，請手動複製。';
+                // 為了避免使用 alert()，我們在這裡短暫改變按鈕狀態來提示用戶
+                const copyBtn = document.getElementById('copy-sos-btn');
+                const originalText = copyBtn.innerText;
+                copyBtn.innerText = message;
+                setTimeout(() => {
+                    copyBtn.innerText = originalText;
+                }, 2000);
+            } catch (err) {
+                console.error('Copy failed:', err);
+            }
+            document.body.removeChild(tempInput);
+        }
+
+        // --- 初始化 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // 嘗試從 LocalStorage 恢復用戶狀態
+            const storedMbti = localStorage.getItem('momsight_mbti');
+            const storedBirthday = localStorage.getItem('momsight_birthday');
+            
+            if (storedMbti && storedBirthday) {
+                document.getElementById('target-date').value = storedBirthday;
+                userMbti = storedMbti;
+                currentStage = calculateMomsStage(storedBirthday);
+                renderResult();
+            } else {
+                toggleSection('stage-input');
+            }
+        });
+    </script>
+</body>
+</html>
